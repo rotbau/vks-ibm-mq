@@ -1,0 +1,101 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: mq-cluster-a
+  namespace: test-ns
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 192.168.156.0/20
+    services:
+      cidrBlocks:
+      - 10.96.0.0/12
+    serviceDomain: cluster.local
+  topology:
+    classRef:
+      name: builtin-generic-v3.6.0
+      namespace: vmware-system-vks-public
+    version: v1.35.5---vmware.1-vkr.1
+    controlPlane:
+      replicas: 1
+    workers:
+      machineDeployments:
+      - class: node-pool
+        name: worker-pool-1
+        replicas: 3
+        # --- Corrected v1beta2 Node Pool Variable Overrides ---
+        variables:
+          overrides:
+          - name: vmClass
+            value: best-effort-large
+    variables:
+    - name: storageClass
+      value: vks-primary-sp
+    - name: vmClass
+      value: best-effort-medium
+---
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonInstall
+metadata:
+  name: mq-cluster-a-cert-manager
+  namespace: test-ns
+spec:
+  addonRef:
+    name: cert-manager
+  clusters:
+  - selector:
+      matchLabels:
+        cluster.x-k8s.io/cluster-name: mq-cluster-a
+---
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonInstall
+metadata:
+  name: mq-cluster-a-contour
+  namespace: test-ns
+spec:
+  addonRef:
+    name: contour
+  clusters:
+  - selector:
+      matchLabels:
+        cluster.x-k8s.io/cluster-name: mq-cluster-a
+---
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonConfig
+metadata:
+  name: mq-cluster-a-contour
+  namespace: test-ns
+  annotations:
+    clusteraddon.addons.kubernetes.vmware.com/owned-for-deletion: "true"
+spec:
+  values:
+    infrastructure_provider: vsphere
+    namespace: tanzu-system-ingress
+    contour:
+      configFileContents:
+        gateway:
+          gatewayRef:
+            name: contour
+            namespace: tanzu-system-ingress
+      useProxyProtocol: false
+      replicas: 2
+      logLevel: info
+    envoy:
+      service:
+        type: LoadBalancer
+        annotations: {}
+        externalTrafficPolicy: Cluster
+        disableWait: false
+      hostPorts:
+        enable: true
+        http: 80
+        https: 443
+      hostNetwork: false
+      terminationGracePeriodSeconds: 300
+      logLevel: info
+    certificates:
+      caDuration: 8760h
+      caRenewBefore: 720h
+      leafDuration: 720h
+      leafRenewBefore: 360h

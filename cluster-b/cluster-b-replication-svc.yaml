@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mq-replication-loadbalancer
+  namespace: prod-mq
+spec:
+  type: LoadBalancer
+  ports:
+    - name: mq-traffic
+      port: 1414
+      targetPort: 1414
+  selector:
+    mq.ibm.com/queueManager: vks-prod-nativeha-mq2
+    mq.ibm.com/role: active
+
