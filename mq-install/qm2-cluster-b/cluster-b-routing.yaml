@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: qm2-console-custom-svc  # <--- Our independent service name
+  name: qm2-console-custom-svc  # Custom console Service name
   namespace: prod-mq
   annotations:
     projectcontour.io/upstream-protocol.tls: "9443"
@@ -19,7 +19,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: contour  # <--- Explicitly named to satisfy Tanzu's static gatewayRef
+  name: contour  # Explicitly named to satisfy VKS static gatewayRef
   namespace: tanzu-system-ingress
 spec:
   gatewayClassName: contour
@@ -57,4 +57,3 @@ spec:
       backendRefs:
         - name: qm2-console-custom-svc
           port: 9443
-

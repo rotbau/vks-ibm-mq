@@ -9,7 +9,9 @@ spec:
     - name: mq-traffic
       port: 1414
       targetPort: 1414
+      protocol: TCP
   selector:
-    mq.ibm.com/queueManager: vks-prod-nativeha-mq2
-    mq.ibm.com/role: active
-
+    app.kubernetes.io/component: integration
+    app.kubernetes.io/instance: vks-prod-nativeha-mq1
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: ibm-mq

@@ -1,0 +1,67 @@
+apiVersion: mq.ibm.com/v1beta1
+kind: QueueManager
+metadata:
+  name: vks-prod-nativeha-mq1
+  namespace: prod-mq
+spec:
+  license:
+    accept: true
+    license: {redacted}
+  version: "10.0.0.0-r1"
+  securityContext:
+    fsGroup: 1001
+  queueManager:
+    name: "QM1"
+    availability:
+      type: NativeHA
+    route:
+      enabled: false
+    metrics:
+      serviceMonitor:
+        enabled: false
+    storage:
+      defaultClass: "vks-primary-sp"
+      queueManager:
+        type: persistent-claim
+        size: 1Gi
+        deleteClaim: true
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+    ini:
+      - configMap:
+          name: qm1-cluster-config
+          items:
+            - autocluster.ini
+    mqsc:
+      - configMap:
+          name: qm1-cluster-config
+          items:
+            - uniform.mqsc
+  web:
+    enabled: true
+    route:
+      enabled: false
+    console:
+      authentication:
+        provider: manual
+      authorization:
+        provider: manual
+    manualConfig:
+      configMap:
+        name: mqwebuserconfigmap
+  template:
+    pod:
+      containers:
+        - name: qmgr
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL

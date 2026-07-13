@@ -1,0 +1,10 @@
+apiVersion: operator.ibm.com/v1alpha1
+kind: IBMLicensing
+metadata:
+  name: instance
+  namespace: ibm-licensing
+spec:
+  license:
+    accept: true
+  datasource: datacollector
+  httpsEnable: true

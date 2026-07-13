@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qm2-cluster-config
+  namespace: prod-mq
+data:
+  autocluster.ini: |
+    AutoCluster:
+      Type=Uniform
+      ClusterName=GLOBAL_HA_CLUSTER
+      RepositoryName1=QM1
+      Repository1Conname=qm1-clustera.example.com(1414)
+      RepositoryName2=QM2
+      Repository2Conname=qm2-clusterb.example.com(1414)
+  uniform.mqsc: |
+    ALTER QMGR REPOS(GLOBAL_HA_CLUSTER)
+    DEFINE CHANNEL(GLOBAL_HA_CHL_QM2) CHLTYPE(CLUSRCVR) TRPTYPE(TCP) CONNAME('qm2-clusterb.example.com(1414)') CLUSTER(GLOBAL_HA_CLUSTER) REPLACE
+    DEFINE CHANNEL(GLOBAL_HA_CHL_QM1) CHLTYPE(CLUSSDR) TRPTYPE(TCP) CONNAME('qm1-clustera.example.com(1414)') CLUSTER(GLOBAL_HA_CLUSTER) REPLACE
+    DEFINE QLOCAL(APP.WORK.QUEUE) CLUSTER(GLOBAL_HA_CLUSTER) DEFBIND(NOTFIXED) REPLACE

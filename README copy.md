@@ -1,13 +1,6 @@
 # IBM MQ on VMware VKS
 
-This repository contains a proof of concept install of IBM MQ on VMware vSphere Kubernetes Service (VKS).  This repository leverages the IBM MQ Operator Helm install (EKS version) to install and manage a mutli-cluster HA MQ Install.
-
-Essential enterprise configurations such as monitoring which are Openshift specific, security hardening parameters, and advanced tuning profiles may be intentionally omitted for clarity. This guide represents a functional proof-of-concept; the authors are not IBM MQ product specialists, and this material is provided on an as-is basis. For production Reference Architectures, always consult official IBM MQ and VMware VKS documentation. 
-
-This documentation and all accompanying code, scripts, and manifests are provided **"AS IS" WITHOUT WARRANTY OF ANY KIND**, either expressed or implied, including but not limited to the implied warranties of merchantability, fitness for a particular purpose, or non-infringement. The entire risk as to the quality, execution, and performance of these steps is borne entirely by you. In no event shall the authors be liable for any damages, system failures, data loss, or production outages resulting from the use of this guide. Use these materials at your own discretion.
-
-
-## VKS Cluster Preparation
+## Preparation
 1. Create mq-cluster-a by deploying cluster-a/mq-cluster-a.yaml to the Supervisor (or feel free to create your own cluster)
 2. Run cluster-a-infra-prep.sh
 3. Deploy cluster-a-replication-svc.yaml manifest
