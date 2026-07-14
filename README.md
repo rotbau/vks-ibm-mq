@@ -8,38 +8,238 @@ This documentation and all accompanying code, scripts, and manifests are provide
 
 
 ## VKS Cluster Preparation
-1. Create mq-cluster-a by deploying cluster-a/mq-cluster-a.yaml to the Supervisor (or feel free to create your own cluster)
-2. Run cluster-a-infra-prep.sh
-3. Deploy cluster-a-replication-svc.yaml manifest
-4. Create mq-cluster-b by deploying cluster-b/mq-cluster-b.yaml to the Supervisor (or feel free to create your own cluster)
-5. Run cluster-b-infra-prep.sh
-6. Deploy cluster-b-replication-svc.yaml manifest
 
-## Deploy IBM License Server
+You can use your own process to deploy clusters for MQ testing, however for convience I've provided a sample manifest for mq-cluster-a and mq-cluster-b.  I've also included a helper script that creates a key pair and secret for Contour to use when accessing the MQ Console.
 
-We are manually downloading the chart tar file but you can also add the helm 
+### Basic Cluster Requirements.
 
+- 1 Control plan (best-effort medium) amd 3 Worker Nodes (best-effort-large)
+- Storage Class
+- Contour and Cert Manager installed (I'm using the addon framework in my examples)
+- VKS 3.6 or 3.7*
+- Kubernetes version (vKR) 1.35.5*
 
-echo "DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS" | kubectl exec -i vks-prod-nativeha-mq1-ibm-mq-0 -n prod-mq -c qmgr -- runmqsc QM1
+* These were the versions tested but should work with most recent vKR versions.
 
-kubectl exec -it vks-prod-nativeha-mq1-ibm-mq-0 -n prod-mq -c qmgr -- sh
+### Deploy Test Clusters
+1. Create `mq-cluster-a` by applying `infrastructure/cluster-a/01-mq-cluster-a.yaml` to the Supervisor context
+2. Authenticate to `mq-cluster-a` and set as active context
+3. Run `infrastructure/cluster-a/02-cluster-a-infraprep.sh` which will configure the following:
+- creates prod-mq namespace
+- creates ibm-licensing namespace
+- generate self-signed cert/key pair for mq-console-secret
+- create mq-console-secret
+- create Contour gateway class
+5. Create `mq-cluster-b` by applying `infrastructure/cluster-b/01-mq-cluster-b.yaml` to the Supervisor context
+6. Authenticate to `mq-cluster-b` and set as active context
+5. Run `mq-cluster-b` by running `infrastructure/cluster-b/02-cluster-b-infraprep.sh`
 
-On QM1
+## Deploy IBM License Operator and License Instance
 
-echo "REFRESH CLUSTER(GLOBAL_HA_CLUSTER) REPOS(YES)" | runmqsc QM1
-echo "DISPLAY CHSTATUS(GLOBAL_HA_CHL_QM2) ALL" | runmqsc QM1
+### Download and Untar License Operator
+1. Download IBM Cluster Scoped License Server (we are manually downloading by you could also add the IBM Helm Repository) 
+```
+curl -L -O https://github.com/IBM/charts/raw/refs/heads/master/repo/ibm-helm/ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
+```
+2. Untar IBM Cluster Scoped License Server file
+```
+ tar -zxvf ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
+```
+### Cluster A
+1. Install on cluster-A (mq-cluster-a context)
+```
+helm template ibm-licensing-edge ./ibm-licensing-cluster-scoped \
+  --namespace ibm-licensing \
+  --set ibmLicensing.namespace=ibm-licensing | kubectl apply -f -
+```
+**Note**: If you encounter the error "error: resource mapping not found for name: "instance" namespace: "" from "STDIN": no matches for kind "IBMLicensing" in version "operator.ibm.com/v1alpha1"
+ensure CRDs are installed first" - Just rerun the same command
+2. Verify License Server is Running
+```
+kubectl get po -n ibm-licensing
 
-Manually create QM2 channel on QM1
-echo "DEFINE CHANNEL(GLOBAL_HA_CHL_QM2) CHLTYPE(CLUSSDR) TRPTYPE(TCP) CONNAME('qm2-clusterb.vtechk8s.com(1414)') CLUSTER(GLOBAL_HA_CLUSTER) REPLACE" | runmqsc QM1
+NAME                                      READY   STATUS    RESTARTS   AGE
+ibm-licensing-operator-8456b9c7b9-2rhsj   1/1     Running   0          89s
+```
+3. Configure License Instance on cluster-a (mq-cluster-a)
+```
+kubectl apply -f mq-install/shared/01-ibm-license-instance.yaml
+```
+4. Verify License Instance is Configured and Running (Note this make take several minutes to appear)
+```
+kubectl get po -n ibm-licensing
 
-echo "DISPLAY CHSTATUS(GLOBAL_HA_CHL_QM2) ALL" | runmqsc QM1
-grep -E "AMQ9[0-9]{3}" /mnt/mqm/data/qmgrs/QM1/errors/AMQERR01.LOG | tail -n 5
-timeout 3 bash -c 'cat < /dev/tcp/qm2-clusterb.vtechk8s.com/1414' 2>&1
-bash: connect: Connection refused
-bash: line 1: /dev/tcp/qm2-clusterb.vtechk8s.com/1414: Connection refused
+NAME                                              READY   STATUS    RESTARTS   AGE
+ibm-licensing-operator-8456b9c7b9-2rhsj           1/1     Running   0          11m
+ibm-licensing-service-instance-68f6559cd6-c642c   1/1     Running   0          2m16s
+```
+### Cluster B
+1. Repeat Steps 1-4 on cluster-b (mq-cluster-b)
 
-VERIFICATION COMMANDS:
+## Deploy IBM MQ Operator
 
+1. Download IBM MQ Operator (we are manually downloading by you could also add the IBM Helm Repository) 
+```
+curl -L -O https://github.com/IBM/charts/raw/refs/heads/master/repo/ibm-helm/ibm-mq-operator-4.0.0.tgz
+```
+2. Untar IBM MQ Operator file
+```
+tar -zxvf ibm-mq-operator-4.0.0.tgz
+```
+### Cluster A
+1. Install MQ Operator on Cluster A (mq-cluster-a)
+```
+helm install --set name=ibm-mq-operator ibm-mq-operator ./ibm-mq-operator --namespace prod-mq
+```
+2. Verify Operator is running
+```
+kubectl get po -n prod-mq
+
+NAME                              READY   STATUS    RESTARTS   AGE
+ibm-mq-operator-cd68b77bf-knh9g   1/1     Running   0          39s
+```
+### Cluster B
+1. Repeat steps 1-2 on Cluster B (mq-cluster-b) 
+
+## Configure Shared Uniform Cluster Topology
+
+### Replication Service
+We are configuring a L4 Load Balance to provide intercluster communication.  This service uses the native IBM MQ selector to find the active MQ Queue Manager.
+
+**Cluster A**
+1. Change context to cluster A (mq-cluster-a)
+2. Apply replication service manifest
+```
+kubectl apply -f mq-install/qm1-cluster-a/01-cluster-a-replication-svc.yaml
+```
+3. Validate service and record service IP
+```
+kubectl get svc -n prod-mq
+
+NAME                          TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)          AGE
+mq-replication-loadbalancer   LoadBalancer   10.111.248.124   192.168.150.13   1414:32565/TCP   7s
+```
+**Cluster B**
+1. Change context to cluster B (mq-cluster-b)
+2. Apply replication service manifest
+```
+kubectl apply -f mq-install/qm2-cluster-b/01-cluster-b-replication-svc.yaml
+```
+3. Validate service and record service IP
+```
+kubectl get svc -n prod-mq
+
+NAME                          TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)          AGE
+mq-replication-loadbalancer   LoadBalancer   10.104.219.246   192.168.151.3   1414:30977/TCP   6s
+```
+### Prepare Cluster HA Configuration and Replication DNS
+We will need to modify the `qm1-cluster-a-configmap.yaml` and `qm2-cluster-b-configmap.yaml` files to reflect our desired FQDN for the replication service created above.  We then need to create DNS entries for the FQDNs to the corresponding replication service IPs.
+
+**Cluster A**
+1. Modify `mq-install/qm1-cluster-a/02-qm1-cluster-a-configmap.yaml`
+2. Adjust the FQDN to the desired value for the Following Sections:
+```
+Autocluster.ini Section:
+Repository1Conname - Replace with FQDN of Cluster A Replication Service
+Repository2Conname - Replace with FQDN of Cluster B Replication Service
+Uniform.mqsc Section:
+DEFINE CHANNEL(GLOBAL_HA_CHL_QM1) - Replace with FQDN of Cluster A Replication Service
+DEFINE CHANNEL(GLOBAL_HA_CHL_QM2) - Replace with FQDN of Cluster B Replication Service
+```
+3. Create DNS entry for the FQDN entered for `Repository1Conname` pointing to the IP for the Cluster A mq-replication-loadbalancer service.
+
+**Cluster B**
+1. Modify `mq-install/qm2-cluster-b/02-qm2-cluster-b-configmap.yaml`
+2. Adjust the FQDN to the desired value for the Following Sections:
+```
+Autocluster.ini Section:
+Repository1Conname - Replace with FQDN of Cluster A Replication Service
+Repository2Conname - Replace with FQDN of Cluster B Replication Service
+Uniform.mqsc Section:
+DEFINE CHANNEL(GLOBAL_HA_CHL_QM2) - Replace with FQDN of Cluster B Replication Service
+DEFINE CHANNEL(GLOBAL_HA_CHL_QM1) - Replace with FQDN of Cluster A Replication Service
+```
+3. Create DNS entry for the FQDN entered for `Repository2Conname` pointing to the IP for the Cluster B mq-replication-loadbalancer service.
+
+### Apply Configmap Manifests
+
+**Cluster A**
+1. Set context to Cluster A (mq-cluster-a)
+2. Apply Configmap
+```
+ kubectl apply -f mq-install/qm1-cluster-a/02-qm1-cluster-a-configmap.yaml
+```
+
+**Cluster B***
+1. Set Context to Cluster B (mq-cluster-b)
+2. Apply Configmap
+```
+ kubectl apply -f mq-install/qm2-cluster-b/02-qm2-cluster-b-configmap.yaml
+```
+
+## QueueManager Workload Deployment
+Deploy the specific QueueManager engines. This creates the queue manager objects on each cluster using the qm1 and qm2 configmaps to establish the Global MQ install.   We are also deploying a custom MQ Web Console configmap so we can log in and validate the Queue operations.  **Note**: The webconfig is insecure and should only be used for testing purposes.  
+
+### VKS Specific Configurations
+- Adjust Security context fsGroup:1001 to allow queues to read PVC
+- Disable route and metrics as these are OpenShift specific items
+
+### Cluster A
+1. Set context to Cluster A
+2. Deploy MQ Web Console Configmap
+```
+kubectl apply -f mq-install/shared/02-mq-web-console-cm.yaml
+```
+3. Modify the mq-install/qm1-cluster-a/03-qm1-cluster-a.yaml file with your license
+4. Deploy QueueManager
+```
+kubectl apply -f mq-install/qm1-cluster-a/03-qm1-cluster-a.yaml
+```
+5. Validate Queuemanager Status.  Normal status should show 1 QueueManager in 1/1 Status and 2 in 0/1
+```
+kubectl get po -n prod-mq
+
+NAME                              READY   STATUS    RESTARTS      AGE
+ibm-mq-operator-cd68b77bf-knh9g   1/1     Running   1 (58m ago)   83m
+vks-prod-nativeha-mq1-ibm-mq-0    1/1     Running   0             68s
+vks-prod-nativeha-mq1-ibm-mq-1    0/1     Running   0             68s
+vks-prod-nativeha-mq1-ibm-mq-2    0/1     Running   0             68s
+```
+
+### Cluster B
+1. Set context to Cluster b
+2. Deploy MQ Web Console Configmap
+```
+kubectl apply -f mq-install/shared/02-mq-web-console-cm.yaml
+```
+3. Modify the mq-install/qm2-cluster-b/03-qm2-cluster-b.yaml file with your license
+4. Deploy QueueManager
+```
+kubectl apply -f mq-install/qm2-cluster-b/03-qm2-cluster-b.yaml
+```
+5. Validate Queuemanager Status.  Normal status should show 1 QueueManager in 1/1 Status and 2 in 0/1
+```
+kubectl get po -n prod-mq
+
+NAME                              READY   STATUS    RESTARTS      AGE
+ibm-mq-operator-cd68b77bf-8k6gx   1/1     Running   1 (63s ago)   87m
+vks-prod-nativeha-mq2-ibm-mq-0    1/1     Running   0             3m53s
+vks-prod-nativeha-mq2-ibm-mq-1    0/1     Running   0             3m53s
+vks-prod-nativeha-mq2-ibm-mq-2    0/1     Running   0             3m53s
+```
+
+### Multi-Cluster Channel Configuration Check
+**Note:** The command must run against the active queuemanager pod.   In the output from kubectl get pods -n prod-mq; this is the vks-prod-nativeha-mq1-ibm-mq-0 which is marked Ready 1/1.  You may need to adjust the command depending on your active pod.
+
+**Cluster A**
+```
 echo "DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS" | kubectl exec -i vks-prod-nativeha-mq1-ibm-mq-0 -n prod-mq -- runmqsc QM1
+```
 
+**Cluster B**
+```
 echo "DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS" | kubectl exec -i vks-prod-nativeha-mq2-ibm-mq-0 -n prod-mq -- runmqsc QM2
+```
+
+
+
