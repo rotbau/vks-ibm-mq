@@ -1,0 +1,59 @@
+# This custom service is to allow us to use Contour 443.  Without this service we will pass unencrypted traffic to the
+# web console are receive an error.
+apiVersion: v1
+kind: Service
+metadata:
+  name: qm1-console-custom-svc  # Custom console service name
+  namespace: prod-mq
+  annotations:
+    projectcontour.io/upstream-protocol.tls: "9443"
+spec:
+  ports:
+    - name: https
+      port: 9443
+      targetPort: 9443
+  selector:
+    app.kubernetes.io/instance: vks-prod-nativeha-mq
+    app.kubernetes.io/name: ibm-mq
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: contour  # Explicitly named to satisfy VKS static gatewayRef
+  namespace: tanzu-system-ingress
+spec:
+  gatewayClassName: contour
+  listeners:
+    - name: mq-web-console
+      protocol: HTTPS
+      port: 443
+      hostname: "qm-console.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: mq-console-tls-secret
+            namespace: tanzu-system-ingress
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mq-console-route
+  namespace: prod-mq
+spec:
+  parentRefs:
+    - name: contour
+      namespace: tanzu-system-ingress
+      sectionName: mq-web-console
+  hostnames:
+    - "qm-console.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: qm1-console-custom-svc
+          port: 9443
