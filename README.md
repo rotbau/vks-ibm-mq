@@ -13,8 +13,8 @@ You can use your own process to deploy clusters for MQ testing, however for conv
 
 ### Basic Cluster Requirements.
 
-- 1 Control plan (best-effort medium) amd 3 Worker Nodes (best-effort-large)
-- Storage Class
+- 1 Control plan (best-effort medium) and 3 Worker Nodes (best-effort-large)
+- Storage Class defined
 - Contour and Cert Manager installed (I'm using the addon framework in my examples)
 - VKS 3.6 or 3.7*
 - Kubernetes version (vKR) 1.35.5*
