@@ -279,4 +279,72 @@ No commands have a syntax error.
 All valid MQSC commands were processed.
 ```
 
+## MQ Web Console Routing
 
+The final step is to expose the MQ Web Console on both Cluster A and Cluster B.  In this example we are using Contour and Gateway API to expose the service.  We also use a custom front end service to bypass the constraint of the VKS Contour package to only listen on ports 80 and 443.
+
+### Cluster A Routing
+1. Set context to Cluster A
+2. Modify mq-install/qm1-cluster-a/04-cluster-a-routing.yaml Hostname(s) section in  the Gateway and HTTPROUTE sections to your preferred FQDN for the Web Console.
+3. Apply cluster A routing config which creates the custom service and the gateway and httproute objects.
+```
+ kubectl apply -f mq-install/qm1-cluster-a/04-cluster-a-routing.yaml 
+```
+4. Verify objects are created as expected httproute, qm1-console-custom-svc
+```
+kubectl get svc,httproute -n prod-mq
+
+ NAME                                             TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)             AGE
+service/mq-replication-loadbalancer              LoadBalancer   10.111.248.124   192.168.150.13   1414:32565/TCP      170m
+service/qm1-console-custom-svc                   ClusterIP      10.106.98.106    <none>           9443/TCP            16s
+service/vks-prod-nativeha-mq1-ibm-mq             ClusterIP      10.105.67.15     <none>           9443/TCP,1414/TCP   96m
+service/vks-prod-nativeha-mq1-ibm-mq-metrics     ClusterIP      10.103.71.155    <none>           9157/TCP            96m
+service/vks-prod-nativeha-mq1-ibm-mq-replica-0   ClusterIP      10.102.205.80    <none>           9414/TCP            96m
+service/vks-prod-nativeha-mq1-ibm-mq-replica-1   ClusterIP      10.103.43.123    <none>           9414/TCP            96m
+service/vks-prod-nativeha-mq1-ibm-mq-replica-2   ClusterIP      10.102.216.46    <none>           9414/TCP            96m
+
+NAME                                                   HOSTNAMES                     AGE
+httproute.gateway.networking.k8s.io/mq-console-route   ["qm1-console.example.com"]   16s
+```
+```
+kubectl get gateway -n tanzu-system-ingress
+
+NAME      CLASS     ADDRESS          PROGRAMMED   AGE
+contour   contour   192.168.150.10   True         107s
+```
+5. Create a DNS record for you MQ Web Console FQDN pointing to the IP of the Gateway Object
+
+### Cluster B Routing
+1. Set context to Cluster B
+2. Modify mq-install/qm2-cluster-b/04-cluster-b-routing.yaml Hostname(s) section in  the Gateway and HTTPROUTE sections to your preferred FQDN for the Web Console.
+3. Apply cluster A routing config which creates the custom service and the gateway and httproute objects.
+```
+ kubectl apply -f mq-install/qm1-cluster-a/04-cluster-a-routing.yaml 
+```
+4. Verify objects are created as expected httproute, qm2-console-custom-svc
+```
+kubectl get svc,httproute -n prod-mq
+
+NAME                                             TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)             AGE
+service/mq-replication-loadbalancer              LoadBalancer   10.104.219.246   192.168.151.3   1414:30977/TCP      174m
+service/qm2-console-custom-svc                   ClusterIP      10.107.12.120    <none>          9443/TCP            19s
+service/vks-prod-nativeha-mq2-ibm-mq             ClusterIP      10.111.234.166   <none>          9443/TCP,1414/TCP   78m
+service/vks-prod-nativeha-mq2-ibm-mq-metrics     ClusterIP      10.104.194.104   <none>          9157/TCP            78m
+service/vks-prod-nativeha-mq2-ibm-mq-replica-0   ClusterIP      10.101.232.18    <none>          9414/TCP            78m
+service/vks-prod-nativeha-mq2-ibm-mq-replica-1   ClusterIP      10.104.120.186   <none>          9414/TCP            78m
+service/vks-prod-nativeha-mq2-ibm-mq-replica-2   ClusterIP      10.96.118.129    <none>          9414/TCP            78m
+
+NAME                                                   HOSTNAMES                     AGE
+httproute.gateway.networking.k8s.io/mq-console-route   ["qm2-console.example.com"]   19s
+```
+```
+kubectl get gateway -n tanzu-system-ingress
+
+NAME      CLASS     ADDRESS         PROGRAMMED   AGE
+contour   contour   192.168.151.2   True         56s
+```
+5. Create a DNS record for you MQ Web Console FQDN pointing to the IP of the Gateway Object
+
+### MQ Web Console Testing
+1. Open browser to https://qm1-console.example.com and https://qm2-console.example.com - you do not need to specify port 9443 as our custom service is re-writing this
+2. Log in with admin / Passw0rd!
