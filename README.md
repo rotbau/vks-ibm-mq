@@ -31,9 +31,9 @@ You can use your own process to deploy clusters for MQ testing, however for conv
 - generate self-signed cert/key pair for mq-console-secret
 - create mq-console-secret
 - create Contour gateway class
-5. Create `mq-cluster-b` by applying `infrastructure/cluster-b/01-mq-cluster-b.yaml` to the Supervisor context
-6. Authenticate to `mq-cluster-b` and set as active context
-5. Run `mq-cluster-b` by running `infrastructure/cluster-b/02-cluster-b-infraprep.sh`
+4. Create `mq-cluster-b` by applying `infrastructure/cluster-b/01-mq-cluster-b.yaml` to the Supervisor context
+5. Authenticate to `mq-cluster-b` and set as active context
+6. Run `mq-cluster-b` by running `infrastructure/cluster-b/02-cluster-b-infraprep.sh`
 
 ## Deploy IBM License Operator and License Instance
 
