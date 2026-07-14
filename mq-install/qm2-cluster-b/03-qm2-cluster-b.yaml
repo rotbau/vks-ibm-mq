@@ -25,6 +25,18 @@ spec:
         type: persistent-claim
         size: 1Gi
         deleteClaim: true
+      #Uncomment Below for Seperate Storage Configuration
+      # Dedicated volume for active transaction and message payload persistence
+#      persistedData:
+#        enabled: true
+#        type: persistent-claim
+#        size: 1Gi
+
+      # Dedicated volume for Write-Ahead Transaction Logs (Highly recommended for Native HA performance)
+#      recoveryLogs:
+#        enabled: true
+#        type: persistent-claim
+#        size: 1Gi        
     resources:
       limits:
         cpu: "2"
