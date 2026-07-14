@@ -235,11 +235,48 @@ vks-prod-nativeha-mq2-ibm-mq-2    0/1     Running   0             3m53s
 ```
 echo "DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS" | kubectl exec -i vks-prod-nativeha-mq1-ibm-mq-0 -n prod-mq -- runmqsc QM1
 ```
+Expected Output
+```
+5724-H72 (C) Copyright IBM Corp. 1994, 2026.
+Starting MQSC for queue manager QM1.
+
+
+     1 : DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS
+AMQ8441I: Display Cluster Queue Manager details.
+   CLUSQMGR(QM1)                           CHANNEL(GLOBAL_HA_CHL_QM1)
+   CLUSTER(GLOBAL_HA_CLUSTER)              QMTYPE(REPOS)
+   STATUS(RUNNING)
+AMQ8441I: Display Cluster Queue Manager details.
+   CLUSQMGR(QM2)                           CHANNEL(GLOBAL_HA_CHL_QM2)
+   CLUSTER(GLOBAL_HA_CLUSTER)              QMTYPE(REPOS)
+   STATUS(RUNNING)
+One MQSC command read.
+No commands have a syntax error.
+All valid MQSC commands were processed.
+```
 
 **Cluster B**
 ```
 echo "DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS" | kubectl exec -i vks-prod-nativeha-mq2-ibm-mq-0 -n prod-mq -- runmqsc QM2
 ```
+Expected Output
+```
+5724-H72 (C) Copyright IBM Corp. 1994, 2026.
+Starting MQSC for queue manager QM2.
 
+
+     1 : DISPLAY CLUSQMGR(*) CLUSTER(GLOBAL_HA_CLUSTER) QMTYPE STATUS
+AMQ8441I: Display Cluster Queue Manager details.
+   CLUSQMGR(QM1)                           CHANNEL(GLOBAL_HA_CHL_QM1)
+   CLUSTER(GLOBAL_HA_CLUSTER)              QMTYPE(REPOS)
+   STATUS(RUNNING)
+AMQ8441I: Display Cluster Queue Manager details.
+   CLUSQMGR(QM2)                           CHANNEL(GLOBAL_HA_CHL_QM2)
+   CLUSTER(GLOBAL_HA_CLUSTER)              QMTYPE(REPOS)
+   STATUS(RUNNING)
+One MQSC command read.
+No commands have a syntax error.
+All valid MQSC commands were processed.
+```
 
 
