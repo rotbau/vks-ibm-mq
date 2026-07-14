@@ -9,15 +9,16 @@ This documentation and all accompanying code, scripts, and manifests are provide
 
 ## VKS Cluster Preparation
 
-You can use your own process to deploy clusters for MQ testing, however for convience I've provided a sample manifest for mq-cluster-a and mq-cluster-b.  I've also included a helper script that creates a key pair and secret for Contour to use when accessing the MQ Console.
+You can use your own process to deploy clusters for MQ testing, however for convience I've provided a sample manifest for mq-cluster-a and mq-cluster-b.  I've also included a helper script that creates a key pair and secret for Contour to use when accessing the MQ Console.  As long as the components in the Basic Cluster Requirements section is met you can use any method to deploy the clusters.
 
 ### Basic Cluster Requirements.
-
 - 1 Control plan (best-effort medium) and 3 Worker Nodes (best-effort-large)
 - Storage Class defined
 - Contour and Cert Manager installed (I'm using the addon framework in my examples)
+- TLS pair and secret for Contour to use for MQ Web Console
 - VKS 3.6 or 3.7*
 - Kubernetes version (vKR) 1.35.5*
+- DNS Entries for Replication Service FQDN and Web Console HTTP Route FQDN
 
 * These were the versions tested but should work with most recent vKR versions.
 
