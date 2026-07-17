@@ -7,7 +7,7 @@ Essential enterprise configurations such as monitoring which are Openshift speci
 This documentation and all accompanying code, scripts, and manifests are provided **"AS IS" WITHOUT WARRANTY OF ANY KIND**, either expressed or implied, including but not limited to the implied warranties of merchantability, fitness for a particular purpose, or non-infringement. The entire risk as to the quality, execution, and performance of these steps is borne entirely by you. In no event shall the authors be liable for any damages, system failures, data loss, or production outages resulting from the use of this guide. Use these materials at your own discretion.
 
 ## Repo Layout
-
+```
 ├── infrastructure                            <-- Example Manifiest for VKS CLusters and Post Cluster Config
 │   ├── cluster-a
 │   │   ├── 01-mq-cluster-a.yaml
@@ -35,9 +35,9 @@ This documentation and all accompanying code, scripts, and manifests are provide
 │       ├── 03-mq-web-console-cm.yaml
 │       ├── 04-qm-single-cluster-ha.yaml
 │       ├── 05-mq-cluster-routing.yaml
-│       └── README.md
-└── README.md
-
+│       └── README.md                           <- Single Cluster HA Specific Readme
+└── README.md                                   <- This document
+```
 
 
 
