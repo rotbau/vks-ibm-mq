@@ -6,14 +6,46 @@ Essential enterprise configurations such as monitoring which are Openshift speci
 
 This documentation and all accompanying code, scripts, and manifests are provided **"AS IS" WITHOUT WARRANTY OF ANY KIND**, either expressed or implied, including but not limited to the implied warranties of merchantability, fitness for a particular purpose, or non-infringement. The entire risk as to the quality, execution, and performance of these steps is borne entirely by you. In no event shall the authors be liable for any damages, system failures, data loss, or production outages resulting from the use of this guide. Use these materials at your own discretion.
 
+## Repo Layout
 
-## VKS Cluster Preparation
+├── infrastructure                            <-- Example Manifiest for VKS CLusters and Post Cluster Config
+│   ├── cluster-a
+│   │   ├── 01-mq-cluster-a.yaml
+│   │   └── 02-cluster-a-infraprep.sh
+│   └── cluster-b
+│       ├── 01-mq-cluster-b.yaml
+│       └── 02-cluster-b-infraprep.sh
+├── mq-install                                  <- MQ Install Components
+│   ├── qm1-cluster-a                           <- Cluster A Queue Manager 1 files
+│   │   ├── 01-cluster-a-replication-svc.yaml
+│   │   ├── 02-qm1-cluster-a-configmap.yaml
+│   │   ├── 03-qm1-cluster-a.yaml
+│   │   └── 04-cluster-a-routing.yaml
+│   ├── qm2-cluster-b                           <- Cluster B Queue Manager 2 files
+│   │   ├── 01-cluster-b-replication-svc.yaml
+│   │   ├── 02-qm2-cluster-b-configmap.yaml
+│   │   ├── 03-qm2-cluster-b.yaml
+│   │   └── 04-cluster-b-routing.yaml
+│   ├── shared                                  <- Common Shared files for both clusters
+│   │   ├── 01-ibm-license-instance.yaml
+│   │   └── 02-mq-web-console-cm.yaml
+│   └── single-cluster-ha                       <- Simplified Single Cluster HA MQ Install
+│       ├── 01-gatewayclass.yaml
+│       ├── 02-mq-console-tls-secret.yaml
+│       ├── 03-mq-web-console-cm.yaml
+│       ├── 04-qm-single-cluster-ha.yaml
+│       ├── 05-mq-cluster-routing.yaml
+│       └── README.md
+└── README.md
 
-You can use your own process to deploy clusters for MQ testing, however for convience I've provided a sample manifest for mq-cluster-a and mq-cluster-b.  I've also included a helper script that creates a key pair and secret for Contour to use when accessing the MQ Console.  As long as the components in the Basic Cluster Requirements section is met you can use any method to deploy the clusters.
+
+
+
+
 
 ### Basic Cluster Requirements.
 - 1 Control plan (best-effort medium) and 3 Worker Nodes (best-effort-large)
-- Storage Class defined
+- Storage Class defined (block storage backed, )
 - Contour and Cert Manager installed (I'm using the addon framework in my examples)
 - TLS pair and secret for Contour to use for MQ Web Console
 - VKS 3.6 or 3.7*
@@ -21,6 +53,15 @@ You can use your own process to deploy clusters for MQ testing, however for conv
 - DNS Entries for Replication Service FQDN and Web Console HTTP Route FQDN
 
 * These were the versions tested but should work with most recent vKR versions.
+
+## Single Cluster MQ HA Cluster
+The following guide covers a more complex multi-cluster IBM MQ install.  If you prefer to deploy a single cluster HA MQ instance, please jump to the [Single Cluster HA section](mq-install/single-cluster-ha/).
+
+## Multi-Cluster MQ HA Clusters
+Continue Below for the multi-cluster MQ HA Guide
+
+### VKS Cluster Preparation
+You can use your own process to deploy clusters for MQ testing, however for convience I've provided a sample manifest for mq-cluster-a and mq-cluster-b.  I've also included a helper script that creates a key pair and secret for Contour to use when accessing the MQ Console.  As long as the components in the Basic Cluster Requirements section is met you can use any method to deploy the clusters.
 
 ### Deploy Test Clusters
 1. Create `mq-cluster-a` by applying `infrastructure/cluster-a/01-mq-cluster-a.yaml` to the Supervisor context
@@ -102,7 +143,10 @@ ibm-mq-operator-cd68b77bf-knh9g   1/1     Running   0          39s
 ### Cluster B
 1. Repeat steps 1-2 on Cluster B (mq-cluster-b) 
 
+
 ## Configure Shared Uniform Cluster Topology
+
+**NOTE:** This Configuration does not contain the MQ Cross Cluster Replication (CRR) component.  Message data will not be replicated across clusters A and B, only within the 3 replica pods within the cluster. This guide is intented to prove out installation, basic configuration and communication of IBM MQ Operator and MQ global HA clusters.  It does not configure the cross-cluster component.  This configuration is not suitable or intented for production.
 
 ### Replication Service
 We are configuring a L4 Load Balance to provide intercluster communication.  This service uses the native IBM MQ selector to find the active MQ Queue Manager.
