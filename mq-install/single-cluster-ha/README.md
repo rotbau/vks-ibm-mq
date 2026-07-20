@@ -12,7 +12,7 @@ This is a simplified single cluster MQ HA install.  You can leverage one of the 
 
 ### Basic Cluster Requirements.
 - 1 Control plan (best-effort medium) and 3 Worker Nodes (best-effort-large)
-- Storage Class defined (block storage backed, )
+- Storage Class defined (block storage backed)
 - Contour and Cert Manager installed (I'm using the addon framework in my examples)
 - TLS pair and secret for Contour to use for MQ Web Console
 - VKS 3.6 or 3.7*
@@ -21,7 +21,9 @@ This is a simplified single cluster MQ HA install.  You can leverage one of the 
 
 * These were the versions tested but should work with most recent vKR versions.
 
-1. Create `mq-cluster-a` by applying `infrastructure/cluster-a/01-mq-cluster-a.yaml` to the Supervisor context
+## Create and Prepare VKS Cluster
+
+1. Create `mq-cluster-a` by applying `infrastructure/cluster-a/01-mq-cluster-a.yaml` to the Supervisor context or using your prefered cluster creation method.  If you create your own, be sure to have Cert-manager and Contour installed.
 2. Authenticate to `mq-cluster-a` and set as active context
 3. Create contour gatewayclass
 ```
@@ -39,11 +41,38 @@ kubectl apply -f mq-install/single-cluster-ha/01-gatewayclass.yaml
 ```
 kubectl apply -f 02-mq-console-tls-secret.yaml
 ```
-6. Create prod-mq namespace
+6. Create prod-mq and ibm-licensing namespaces
 ```
 kubectl create ns prod-mq
+kubectl create ns ibm-licensing
 ```
-7. Deploy MQ Operator Helm Chart
+
+## Deploy IBM License Server and MQ Operators
+
+1. Deploy IBM License Server (cluster scoped)
+```
+# Download Helm Chart
+curl -L -O https://github.com/IBM/charts/raw/refs/heads/master/repo/ibm-helm/ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
+
+# Untar Helm Chart
+ tar -zxvf ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
+
+# Install IMB MQ Operator Helm Chart
+helm template ibm-licensing-edge ./ibm-licensing-cluster-scoped \
+  --namespace ibm-licensing \
+  --set ibmLicensing.namespace=ibm-licensing | kubectl apply -f -
+
+**Note:** If you encounter the error "error: resource mapping not found for name: "instance" namespace: "" from "STDIN": no matches for kind "IBMLicensing" in version "operator.ibm.com/v1alpha1"
+ensure CRDs are installed first" - Just rerun the same command
+
+# Verify Operator is in running state
+kubectl get po -n ibm-licensing
+
+NAME                                      READY   STATUS    RESTARTS   AGE
+ibm-licensing-operator-8456b9c7b9-2rhsj   1/1     Running   0          89s
+```
+
+2. Deploy MQ Operator Helm Chart
 ```
 # Download Helm Chart
 curl -L -O https://github.com/IBM/charts/raw/refs/heads/master/repo/ibm-helm/ibm-mq-operator-4.0.0.tgz
@@ -54,17 +83,30 @@ tar -zxvf ibm-mq-operator-4.0.0.tgz
 # Install IMB MQ Operator Helm Chart
 helm install --set name=ibm-mq-operator ibm-mq-operator ./ibm-mq-operator --namespace prod-mq
 
-#Verify Operator is in running state
+# Verify Operator is in running state
 kubectl get po -n prod-mq
 
 NAME                              READY   STATUS    RESTARTS       AGE
 ibm-mq-operator-cd68b77bf-fpjpz   1/1     Running   3 (124m ago)   18h
 ```
-8. Deploy MQ Web Console Configmap
+## Configure IBM License Instance and MQ Server
+1. Deploy IBM License Instance
+```
+kubectl apply -f 03-ibm-license-instance.yaml
+
+# Verify License instance is running (Note: this may take a few minutes to appear and go running)
+
+kubectl get po -n ibm-licensing
+
+NAME                                              READY   STATUS    RESTARTS   AGE
+ibm-licensing-operator-8456b9c7b9-2rhsj           1/1     Running   0          11m
+ibm-licensing-service-instance-68f6559cd6-c642c   1/1     Running   0          2m16s
+```
+2. Deploy MQ Web Console Configmap
 ```
 kubectl apply -f mq-install/single-cluster-ha/03-mq-web-console-cm.yaml
 ```
-9. Deploy IBM MQ HA Queue Manifest
+3. Deploy IBM MQ HA Queue Manifest
 ```
 kubectl apply -f mq-install/single-cluster-ha/04-qm-single-cluster-ha.yaml
 
@@ -75,11 +117,11 @@ vks-prod-nativeha-mq-ibm-mq-0     1/1     Running   0              18h
 vks-prod-nativeha-mq-ibm-mq-1     0/1     Running   0              18h
 vks-prod-nativeha-mq-ibm-mq-2     0/1     Running   0              18h
 ```
-10. Deploy Web Console Routing Manifest.  Adjust the Hostname(s) section in the Gateway and HTTPROUTE sections to your preferred FQDN for the Web Console
+4. Deploy Web Console Routing Manifest.  Adjust the Hostname(s) section in the Gateway and HTTPROUTE sections to your preferred FQDN for the Web Console
 ```
 kubectl apply -f mq-install/single-cluster-ha/05-mq-cluster-routing.yaml
 ```
-11. Determine IP of Envoy Proxy Service (or whatever L4/L7 solution you are using)
+5. Determine IP of Envoy Proxy Service (or whatever L4/L7 solution you are using)
 ```
 kubectl get svc -n tanzu-system-ingress
 
@@ -87,9 +129,9 @@ NAME      TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)               
 contour   ClusterIP      10.98.251.84    <none>           8001/TCP                     19h
 envoy     LoadBalancer   10.108.207.55   192.168.150.10   80:31162/TCP,443:32660/TCP   19h
 ```
-12. Create DNS entry for MQ Web Console 
-13. Test MQ Web Console using https://qm-console.example.com - you do not need to use 9443 because our qm-console-custom-svc handles rewriting the port fromm 443 -> 9443
-14. Validate MQ HA Install is functinal (adjust pod to active 1/1 MQ instance)
+6. Create DNS entry for MQ Web Console 
+7. Test MQ Web Console using https://qm-console.example.com - you do not need to use 9443 because our qm-console-custom-svc handles rewriting the port fromm 443 -> 9443
+8. Validate MQ HA Install is functinal (adjust pod to active 1/1 MQ instance)
 ```
 echo "DISPLAY QMSTATUS TYPE(NATIVEHA)" | kubectl exec -i vks-prod-nativeha-mq-ibm-mq-0 -n prod-mq -- runmqsc haqueuemgr
 ```
