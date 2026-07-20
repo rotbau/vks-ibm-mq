@@ -146,7 +146,7 @@ ibm-mq-operator-cd68b77bf-knh9g   1/1     Running   0          39s
 
 ## Configure Shared Uniform Cluster Topology
 
-**NOTE:** This Configuration does not contain the MQ Cross Cluster Replication (CRR) component.  Message data will not be replicated across clusters A and B, only within the 3 replica pods within the cluster. This guide is intented to prove out installation, basic configuration and communication of IBM MQ Operator and MQ global HA clusters.  It does not configure the cross-cluster component.  This configuration is not suitable or intented for production.
+**NOTE:** This Configuration does not contain the MQ Cross Cluster Replication (CRR) component.  Message data will not be replicated across clusters A and B, only within the 3 replica pods within a single cluster. This guide is intented to prove out installation, basic configuration and communication of IBM MQ Operator and MQ global HA clusters.  It does not configure the cross-cluster component.  This configuration is not suitable or intended for production.
 
 ### Replication Service
 We are configuring a L4 Load Balance to provide intercluster communication.  This service uses the native IBM MQ selector to find the active MQ Queue Manager.
