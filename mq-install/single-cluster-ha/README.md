@@ -37,9 +37,9 @@ kubectl apply -f mq-install/single-cluster-ha/01-gatewayclass.yaml
 #  -subj "/CN=qm-console.example.com" \
 #  -addext "subjectAltName=DNS:qm-console.example.com"
 ```
-5. Edit `02-mq-console-tls-secret.yaml` and add the values of the tls.crt and tls.key
+5. Edit `mq-install/single-cluster-ha/02-mq-console-tls-secret.yaml` and add the values of the tls.crt and tls.key
 ```
-kubectl apply -f 02-mq-console-tls-secret.yaml
+kubectl apply -f mq-install/single-cluster-ha/02-mq-console-tls-secret.yaml
 ```
 6. Create prod-mq and ibm-licensing namespaces
 ```
@@ -55,7 +55,7 @@ kubectl create ns ibm-licensing
 curl -L -O https://github.com/IBM/charts/raw/refs/heads/master/repo/ibm-helm/ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
 
 # Untar Helm Chart
- tar -zxvf ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
+tar -zxvf ibm-licensing-cluster-scoped-4.2.16+20250606.101044.0.tgz
 
 # Install IMB MQ Operator Helm Chart
 helm template ibm-licensing-edge ./ibm-licensing-cluster-scoped \
@@ -92,7 +92,7 @@ ibm-mq-operator-cd68b77bf-fpjpz   1/1     Running   3 (124m ago)   18h
 ## Configure IBM License Instance and MQ Server
 1. Deploy IBM License Instance
 ```
-kubectl apply -f 03-ibm-license-instance.yaml
+kubectl apply -f mq-install/single-cluster-ha/03-ibm-license-instance.yaml
 
 # Verify License instance is running (Note: this may take a few minutes to appear and go running)
 
@@ -108,7 +108,7 @@ kubectl apply -f mq-install/single-cluster-ha/03-mq-web-console-cm.yaml
 ```
 3. Deploy IBM MQ HA Queue Manifest
 ```
-kubectl apply -f mq-install/single-cluster-ha/04-qm-single-cluster-ha.yaml
+kubectl apply -f mq-install/single-cluster-ha/05-qm-single-cluster-ha.yaml
 
 # Expected outcome is 3 pods with a single pod in 1/1 state
 kubectl get po -n prod-mq
@@ -119,7 +119,7 @@ vks-prod-nativeha-mq-ibm-mq-2     0/1     Running   0              18h
 ```
 4. Deploy Web Console Routing Manifest.  Adjust the Hostname(s) section in the Gateway and HTTPROUTE sections to your preferred FQDN for the Web Console
 ```
-kubectl apply -f mq-install/single-cluster-ha/05-mq-cluster-routing.yaml
+kubectl apply -f mq-install/single-cluster-ha/06-mq-cluster-routing.yaml
 ```
 5. Determine IP of Envoy Proxy Service (or whatever L4/L7 solution you are using)
 ```
